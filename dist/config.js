@@ -1,5 +1,5 @@
 const migrationConfig = {
-    migrationsFolder: "./src/lib/db",
+    migrationsFolder: "./src/db/migrations",
 };
 export const configApi = {
     fileserverHits: 0,
@@ -18,4 +18,5 @@ export const config = {
         dbURL: getRequiredEnv('DB_URL'),
         migrationConfig: migrationConfig,
     },
+    secret: getRequiredEnv("secret"),
 };

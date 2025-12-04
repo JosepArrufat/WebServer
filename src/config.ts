@@ -13,9 +13,10 @@ type DBConfig = {
 type Config = {
   api: APIConfig;
   db: DBConfig;
+  secret: string;
 };
 const migrationConfig: MigrationConfig = {
-  migrationsFolder: "./src/lib/db",
+  migrationsFolder: "./src/db/migrations",
 };
 
 export const configApi: APIConfig = {
@@ -31,12 +32,14 @@ function getRequiredEnv(key: string): string {
   return val;
 }
 
+
 export const config: Config = {
   api: configApi,
   db: {
     dbURL: getRequiredEnv('DB_URL'),
     migrationConfig: migrationConfig,
   },
+  secret: getRequiredEnv("secret"),
 };
 
 

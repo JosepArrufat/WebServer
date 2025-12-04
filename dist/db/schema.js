@@ -1,4 +1,4 @@
-import { pgTable, timestamp, varchar, uuid, text } from "drizzle-orm/pg-core";
+import { pgTable, timestamp, varchar, uuid, text, boolean } from "drizzle-orm/pg-core";
 export const users = pgTable("users", {
     id: uuid("id").primaryKey().defaultRandom(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -7,6 +7,8 @@ export const users = pgTable("users", {
         .defaultNow()
         .$onUpdate(() => new Date()),
     email: varchar("email", { length: 256 }).unique().notNull(),
+    hashedPassword: varchar("hashed_password").default("unset").notNull(),
+    is_chirpy_red: boolean("is_chirpy_red").default(false)
 });
 export const chirps = pgTable("chirps", {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -18,4 +20,14 @@ export const chirps = pgTable("chirps", {
     body: text("body").notNull(),
     user_id: uuid("user_id").notNull()
         .references(() => users.id, { onDelete: "cascade" }),
+});
+export const refresh_tokens = pgTable("refresh_tokens", {
+    token: text("token").primaryKey(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow()
+        .$onUpdate(() => new Date()),
+    user_id: uuid("user_id").notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    expires_at: timestamp("expires_at").notNull(),
+    revoked_at: timestamp("revoked_at"),
 });

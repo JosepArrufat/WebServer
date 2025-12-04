@@ -1,8 +1,12 @@
 import { BadRequestError } from "../errors.js";
 import { createChirp } from "../db/queries/chirps.js";
+import { getBearerToken, validateJWT } from "../auth.js";
+import { config } from "../config.js";
 export async function handlerChirp(req, res) {
     const params = req.body;
-    if (!params || !params.body || !params.userId) {
+    const token = getBearerToken(req);
+    const userID = validateJWT(token, config.secret);
+    if (!params || !params.body) {
         throw new BadRequestError("Missing required fields: body and userId");
     }
     else if (params.body.length > 140) {
@@ -13,7 +17,7 @@ export async function handlerChirp(req, res) {
             .replace(/kerfuffle/gi, "****")
             .replace(/sharbert/gi, "****")
             .replace(/fornax/gi, "****");
-        const chirp = await createChirp(cleanedBody, params.userId);
+        const chirp = await createChirp(cleanedBody, userID);
         if (!chirp)
             throw new BadRequestError();
         res.status(201);

@@ -1,15 +1,17 @@
 import { Request, Response } from "express";
 import { BadRequestError } from "../errors.js";
 import { createChirp } from "../db/queries/chirps.js";
+import { getBearerToken, validateJWT } from "../auth.js";
+import { config } from "../config.js";
 
 export async function handlerChirp(req: Request, res: Response){
     type parameters = {
-        body: string;
-        userId: string;
+        body: string
     };
     const params: parameters = req.body;
-    
-    if(!params || !params.body || !params.userId){
+    const token = getBearerToken(req);
+    const userID = validateJWT(token, config.secret);
+    if(!params || !params.body){
         throw new BadRequestError("Missing required fields: body and userId");
     } else if(params.body.length > 140){
         throw new BadRequestError("Chirp is too long. Max length is 140");
@@ -20,7 +22,7 @@ export async function handlerChirp(req: Request, res: Response){
             .replace(/sharbert/gi, "****")
             .replace(/fornax/gi, "****");
         
-        const chirp = await createChirp(cleanedBody, params.userId);
+        const chirp = await createChirp(cleanedBody, userID);
         if(!chirp) throw new BadRequestError()
         res.status(201);
         res.json({

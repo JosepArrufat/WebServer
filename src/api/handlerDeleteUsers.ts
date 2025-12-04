@@ -8,8 +8,6 @@ export async function handlerDeleteUsers(req: Request, res: Response) {
     if (config.api.platform !== "dev") {
         throw new ForbiddenError("This endpoint is only available in development environment");
     }
-
-    // Delete all users
     await deleteUsers();
 
     res.status(200).json({

@@ -1,27 +1,27 @@
 import { Request, Response } from "express";
 import { createUser } from "../db/queries/users.js";
 import { BadRequestError, NotFoundError } from "../errors.js";
+import { hashPassword } from "../auth.js";
 
 export async function handlerUsers(req: Request, res: Response){
     type parameters = {
+        password: string;
         email: string;
     };
     const params: parameters = req.body;
-    if(!params){
-        throw new BadRequestError()
+    
+    if(!params || !params.email || !params.password){
+        throw new BadRequestError("Email and password are required");
     }
-    const newUser = await createUser(params);
-    if(!newUser){
-        throw new NotFoundError();
-    }
-    res.status(201);
-    res.set({
-        "Content-Type":"text/plain; charset=utf-8",
-    });
-    res.send({
+    
+    const hashedPassword = await hashPassword(params.password);
+    const newUser = await createUser({email: params.email, hashedPassword});
+    
+    res.status(201).json({
         "id": newUser.id,
         "createdAt": newUser.createdAt,
         "updatedAt": newUser.updatedAt,
         "email": newUser.email,
+        "isChirpyRed": newUser.isChirpyRed,
     });
 }
