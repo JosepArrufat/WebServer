@@ -3,6 +3,7 @@ import type { MigrationConfig } from "drizzle-orm/migrator";
 type APIConfig = {
   fileserverHits: number,
   platform: string,
+  polkaKey: string,
 };
 
 type DBConfig = {
@@ -22,6 +23,7 @@ const migrationConfig: MigrationConfig = {
 export const configApi: APIConfig = {
     fileserverHits: 0,
     platform: getRequiredEnv('PLATFORM'),
+    polkaKey: getRequiredEnv('POLKA_KEY'),
 }
 
 function getRequiredEnv(key: string): string {

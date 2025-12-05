@@ -4,6 +4,7 @@ const migrationConfig = {
 export const configApi = {
     fileserverHits: 0,
     platform: getRequiredEnv('PLATFORM'),
+    polkaKey: getRequiredEnv('POLKA_KEY'),
 };
 function getRequiredEnv(key) {
     const val = process.env[key];

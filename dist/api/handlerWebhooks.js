@@ -1,12 +1,14 @@
 import { upgradeUser } from "../db/queries/users.js";
-import { NotFoundError } from "../errors.js";
+import { NotFoundError, UnauthorizedError } from "../errors.js";
+import { getApiKey } from "../auth.js";
+import { config } from "../config.js";
 export async function handlerWebhooks(req, res) {
-    console.log('Request details:', {
-        method: req.method,
-        url: req.url,
-        headers: req.headers,
-        body: req.body
-    });
+    const apiKey = getApiKey(req);
+    console.log(`API KEY: ${apiKey}`);
+    // Validate the API key against the expected polkaKey
+    if (apiKey !== config.api.polkaKey) {
+        throw new UnauthorizedError("Invalid API key");
+    }
     const { event, data } = req.body;
     if (event != "user.upgraded")
         return res.status(204).end();

@@ -67,3 +67,17 @@ export function makeRefreshToken(): string{
     const token = randomBytes(256);
     return token.toString("hex");
 }
+
+export function getApiKey(req: Request): string{
+    const apiHeader = req.get("authorization");
+    if (!apiHeader) {
+        throw new UnauthorizedError();
+    }
+    const apiString = Array.isArray(apiHeader) ? apiHeader[0] : apiHeader;
+    if(!apiString.startsWith("ApiKey ")){
+        throw new UnauthorizedError();
+    }
+    const apiKey = apiString.substring(7); 
+    if(!apiKey) throw new UnauthorizedError();
+    return apiKey;
+}

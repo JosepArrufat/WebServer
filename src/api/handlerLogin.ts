@@ -24,7 +24,6 @@ export async function handlerLogin(req: Request, res: Response, expireInSeconds=
         throw new UnauthorizedError("Incorrect email or password");
     }
     
-    // Get the safe user with camelCase conversion
     const safeUser = await findSafeUser(email);
     if (!safeUser) {
         throw new UnauthorizedError("User not found");

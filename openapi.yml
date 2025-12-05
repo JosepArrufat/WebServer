@@ -1,0 +1,549 @@
+openapi: 3.0.3
+info:
+  title: Chirpy Web Server API
+  description: A RESTful API server for user management, authentication, and chirp (message) posting with JWT authentication and webhook support.
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8080
+    description: Development server
+paths:
+  /api/healthz:
+    get:
+      summary: Health check
+      description: Check if the server is running and healthy
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api/users:
+    post:
+      summary: Create new user
+      description: Register a new user account
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "securepassword"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafeUser'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update user
+      description: Update user email and/or password
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "newemail@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "newpassword"
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafeUser'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/login:
+    post:
+      summary: User login
+      description: Authenticate user and receive access and refresh tokens
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SafeUser'
+                  - type: object
+                    properties:
+                      token:
+                        type: string
+                        description: JWT access token
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refreshToken:
+                        type: string
+                        description: Refresh token for obtaining new access tokens
+                        example: "c48323b328dc71793941b05781eaf73a..."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/refresh:
+    post:
+      summary: Refresh access token
+      description: Get a new access token using a refresh token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: Refresh token
+                  example: "c48323b328dc71793941b05781eaf73a..."
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: New JWT access token
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/revoke:
+    post:
+      summary: Revoke refresh token
+      description: Revoke (invalidate) a refresh token
+      tags:
+        - Authentication
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: Refresh token to revoke
+                  example: "c48323b328dc71793941b05781eaf73a..."
+      responses:
+        '200':
+          description: Token revoked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/chirps:
+    post:
+      summary: Create new chirp
+      description: Create a new chirp (message)
+      tags:
+        - Chirps
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - body
+              properties:
+                body:
+                  type: string
+                  description: Chirp message content
+                  example: "This is my chirp message content"
+                  maxLength: 140
+      responses:
+        '201':
+          description: Chirp created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chirp'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: Get chirps
+      description: Get all chirps or chirps by a specific author
+      tags:
+        - Chirps
+      parameters:
+        - name: authorId
+          in: query
+          description: Filter chirps by user ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: List of chirps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Chirp'
+
+  /api/chirps/{chirpID}:
+    get:
+      summary: Get chirp by ID
+      description: Get a specific chirp by ID
+      tags:
+        - Chirps
+      parameters:
+        - name: chirpID
+          in: path
+          description: Chirp ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Chirp details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chirp'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete chirp
+      description: Delete a chirp. Users can only delete their own chirps.
+      tags:
+        - Chirps
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: chirpID
+          in: path
+          description: Chirp ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Chirp deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chirp'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/polka/webhooks:
+    post:
+      summary: Handle Polka webhooks
+      description: Handle webhook events from Polka service
+      tags:
+        - Webhooks
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event
+                - data
+              properties:
+                event:
+                  type: string
+                  description: Event type
+                  example: "user.upgraded"
+                data:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                      format: uuid
+                      description: User ID
+                      example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /admin/metrics:
+    get:
+      summary: Get server metrics
+      description: Get server hit metrics
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Server metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hits:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                        description: Number of server hits
+                        example: 42
+
+  /admin/reset:
+    post:
+      summary: Reset server data
+      description: Reset server metrics and clear data (development only)
+      tags:
+        - Admin
+      responses:
+        '200':
+          description: Reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Reset successful"
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: API Key authentication with format "ApiKey {api_key}"
+
+  schemas:
+    SafeUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: User ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        createdAt:
+          type: string
+          format: date-time
+          description: User creation timestamp
+          example: "2025-12-05T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: User last update timestamp
+          example: "2025-12-05T10:30:00.000Z"
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        isChirpyRed:
+          type: boolean
+          description: Premium user status
+          example: false
+
+    Chirp:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Chirp ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        createdAt:
+          type: string
+          format: date-time
+          description: Chirp creation timestamp
+          example: "2025-12-05T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Chirp last update timestamp
+          example: "2025-12-05T10:30:00.000Z"
+        body:
+          type: string
+          description: Chirp message content
+          example: "This is my chirp message content"
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user who created the chirp
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid request"
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Email and password are required"
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid or missing token"
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Access denied"
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Resource not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error"
+
+tags:
+  - name: Health
+    description: Health check operations
+  - name: Users
+    description: User management operations
+  - name: Authentication
+    description: Authentication and token management
+  - name: Chirps
+    description: Chirp (message) operations
+  - name: Webhooks
+    description: Webhook handling
+  - name: Admin
+    description: Administrative operations
